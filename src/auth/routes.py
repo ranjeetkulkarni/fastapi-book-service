@@ -8,6 +8,8 @@ from db.main import get_session
 from .schemas import UserCreate, UserResponse, UserLoginModel
 from .service import UserService
 from .utils import create_access_token, verify_password
+# --- NEW IMPORT ---
+from .dependencies import RefreshTokenBearer
 
 # Standard naming convention inside the module
 router = APIRouter() 
@@ -72,4 +74,22 @@ async def login(user_data: UserLoginModel, session: Session = Depends(get_sessio
             "email": user.email, 
             "uid": str(user.uid)
         }
+    })
+
+# --- REFRESH TOKEN ROUTE (NEW) ---
+@router.get("/refresh_token")
+async def get_new_access_token(token_details: dict = Depends(RefreshTokenBearer())):
+    """
+    Uses a valid Refresh Token to generate a NEW Access Token.
+    """
+    expiry_timestamp = token_details['exp']
+
+    # 1. Generate a NEW Access Token
+    new_access_token = create_access_token(
+        user_data=token_details['user'], # Reuse email/uid from the refresh token
+        expiry=timedelta(minutes=60)
+    )
+
+    return JSONResponse(content={
+        "access_token": new_access_token
     })
