@@ -2,6 +2,8 @@ from fastapi import Request, status, HTTPException
 from fastapi.security import HTTPBearer
 from fastapi.security.http import HTTPAuthorizationCredentials
 from .utils import decode_token
+# --- NEW IMPORT ---
+from db.redis import token_in_blocklist
 
 class TokenBearer(HTTPBearer):
     def __init__(self, auto_error: bool = True):
@@ -17,6 +19,17 @@ class TokenBearer(HTTPBearer):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Invalid or expired token"
             )
+        
+        # --- NEW CHECK: IS TOKEN REVOKED? ---
+        # We look for 'jti' (JWT ID) in the token data
+        jti = token_data.get('jti')
+        
+        if jti and await token_in_blocklist(jti):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This token has been revoked (Logged out)"
+            )
+        # ------------------------------------
 
         self.verify_token_data(token_data)
 
@@ -27,7 +40,6 @@ class TokenBearer(HTTPBearer):
 
 class AccessTokenBearer(TokenBearer):
     def verify_token_data(self, token_data: dict):
-        # If the token has "refresh": true, it's not an access token!
         if token_data and token_data.get("refresh"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -36,7 +48,6 @@ class AccessTokenBearer(TokenBearer):
 
 class RefreshTokenBearer(TokenBearer):
     def verify_token_data(self, token_data: dict):
-        # If the token has "refresh": false (or missing), it's not a refresh token!
         if token_data and not token_data.get("refresh"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

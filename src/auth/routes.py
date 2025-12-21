@@ -3,13 +3,13 @@ from fastapi.responses import JSONResponse
 from sqlmodel import Session
 from datetime import timedelta
 
-# Clean imports (Src Layout)
 from db.main import get_session 
 from .schemas import UserCreate, UserResponse, UserLoginModel
 from .service import UserService
 from .utils import create_access_token, verify_password
-# --- NEW IMPORT ---
-from .dependencies import RefreshTokenBearer
+# --- NEW IMPORTS ---
+from .dependencies import RefreshTokenBearer, AccessTokenBearer
+from db.redis import add_jti_to_blocklist
 
 # Standard naming convention inside the module
 router = APIRouter() 
@@ -93,3 +93,22 @@ async def get_new_access_token(token_details: dict = Depends(RefreshTokenBearer(
     return JSONResponse(content={
         "access_token": new_access_token
     })
+
+# --- LOGOUT ROUTE (REVOKE TOKEN) ---
+@router.post("/logout", status_code=status.HTTP_200_OK)
+async def logout(
+    token_details: dict = Depends(AccessTokenBearer())
+):
+    """
+    Adds the current Access Token's JTI to the Redis Blocklist.
+    This effectively invalidates the token immediately.
+    """
+    jti = token_details.get('jti')
+    
+    # Add to Redis
+    await add_jti_to_blocklist(jti)
+    
+    return JSONResponse(
+        content={"message": "Logged Out Successfully"},
+        status_code=status.HTTP_200_OK
+    )
