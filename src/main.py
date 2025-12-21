@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from books.routes import book_router
-from auth.router import router as auth_router # <--- 1. Import the Auth Router
+from auth.routes import router as auth_router # <--- 1. Import the Auth Router
 from db.main import init_db
 
 @asynccontextmanager

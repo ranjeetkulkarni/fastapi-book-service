@@ -2,7 +2,6 @@ from pydantic import BaseModel, EmailStr
 import uuid
 from datetime import datetime
 
-# 1. Input Schema (What user sends)
 class UserCreate(BaseModel):
     username: str
     email: EmailStr
@@ -10,8 +9,11 @@ class UserCreate(BaseModel):
     first_name: str
     last_name: str
 
-# 2. Output Schema (What we reply with)
-# Notice: No password here. Includes UUID.
+# --- NEW: Login Schema ---
+class UserLoginModel(BaseModel):
+    email: EmailStr
+    password: str
+
 class UserResponse(BaseModel):
     uid: uuid.UUID 
     username: str
