@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from sqlmodel import Session
 from datetime import timedelta
@@ -7,13 +7,12 @@ from db.main import get_session
 from .schemas import UserCreate, UserResponse, UserLoginModel
 from .service import UserService
 from .utils import create_access_token, verify_password
-# --- NEW IMPORTS ---
-from .dependencies import RefreshTokenBearer, AccessTokenBearer
+from .dependencies import RefreshTokenBearer, AccessTokenBearer, get_current_user
 from db.redis import add_jti_to_blocklist
-from .dependencies import RefreshTokenBearer, AccessTokenBearer, get_current_user # <--- Add get_current_user
-from .schemas import UserResponse # Ensure UserResponse is imported
 
-# Standard naming convention inside the module
+# 1. IMPORT CUSTOM EXCEPTIONS
+from errors import InvalidCredentials, UserNotFound
+
 router = APIRouter() 
 
 # --- SIGNUP ROUTE ---
@@ -21,14 +20,8 @@ router = APIRouter()
 async def signup(user_data: UserCreate, session: Session = Depends(get_session)):
     service = UserService(session)
     
-    # 1. Check if user already exists
-    if service.user_exists(user_data.email):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, 
-            detail="User with this email already exists"
-        )
-    
-    # 2. Create the user
+    # NOTE: We removed the "if user_exists" check here.
+    # The Service class now handles that logic and raises UserAlreadyExists automatically!
     new_user = service.create_user(user_data)
     
     return new_user
@@ -38,21 +31,20 @@ async def signup(user_data: UserCreate, session: Session = Depends(get_session))
 async def login(user_data: UserLoginModel, session: Session = Depends(get_session)):
     service = UserService(session)
     
-    # 1. Fetch user by email
     user = service.get_user_by_email(user_data.email)
     
-    # 2. Verify: User exists AND password matches hash
+    # 2. Verify using Custom Exception
     if not user or not verify_password(user_data.password, user.password_hash):
-         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid Email or Password"
-        )
+        # OLD: raise HTTPException(status_code=401...)
+        # NEW:
+        raise InvalidCredentials()
     
     # 3. Create Access Token (Short-lived: 60 mins)
     access_token = create_access_token(
         user_data={
             "email": user.email,
-            "user_uid": str(user.uid)
+            "user_uid": str(user.uid),
+            "role": user.role 
         },
         expiry=timedelta(minutes=60)
     )
@@ -67,7 +59,6 @@ async def login(user_data: UserLoginModel, session: Session = Depends(get_sessio
         refresh=True
     )
 
-    # 5. Return Tokens
     return JSONResponse(content={
         "message": "Login Successful",
         "access_token": access_token,
@@ -78,46 +69,32 @@ async def login(user_data: UserLoginModel, session: Session = Depends(get_sessio
         }
     })
 
-# --- REFRESH TOKEN ROUTE (NEW) ---
+# --- REFRESH TOKEN ROUTE ---
 @router.get("/refresh_token")
 async def get_new_access_token(token_details: dict = Depends(RefreshTokenBearer())):
-    """
-    Uses a valid Refresh Token to generate a NEW Access Token.
-    """
     expiry_timestamp = token_details['exp']
 
-    # 1. Generate a NEW Access Token
-    new_access_token = create_access_token(
-        user_data=token_details['user'], # Reuse email/uid from the refresh token
-        expiry=timedelta(minutes=60)
-    )
+    if datetime.fromtimestamp(expiry_timestamp) > datetime.now():
+        new_access_token = create_access_token(
+            user_data=token_details['user'],
+            expiry=timedelta(minutes=60)
+        )
+        return JSONResponse(content={"access_token": new_access_token})
+    
+    # Should catch via dependency, but good as backup
+    raise InvalidCredentials() 
 
-    return JSONResponse(content={
-        "access_token": new_access_token
-    })
-
-# --- LOGOUT ROUTE (REVOKE TOKEN) ---
+# --- LOGOUT ROUTE ---
 @router.post("/logout", status_code=status.HTTP_200_OK)
-async def logout(
-    token_details: dict = Depends(AccessTokenBearer())
-):
-    """
-    Adds the current Access Token's JTI to the Redis Blocklist.
-    This effectively invalidates the token immediately.
-    """
+async def logout(token_details: dict = Depends(AccessTokenBearer())):
     jti = token_details.get('jti')
-    
-    # Add to Redis
     await add_jti_to_blocklist(jti)
-    
     return JSONResponse(
         content={"message": "Logged Out Successfully"},
         status_code=status.HTTP_200_OK
     )
 
-# --- NEW ROUTE ---
+# --- ME ROUTE ---
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_profile(user = Depends(get_current_user)):
-    return user 
-    # Because we set lazy="selectin" in models.py, 'user.books' is already loaded!
-    # Pydantic will see it and fill the 'books' list in the JSON.
+    return user

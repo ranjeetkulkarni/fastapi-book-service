@@ -2,6 +2,8 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, date # <--- Import date
 import uuid
+from typing import List # <--- Import List
+from reviews.schemas import ReviewModel # <--- Import Review Schema
 
 # 1. Ensure this is 'BookCreateModel' to match your imports
 class BookCreateModel(BaseModel):
@@ -37,3 +39,6 @@ class BookUpdateModel(BaseModel):
     published_date: Optional[str] = None
     page_count: Optional[int] = None
     language: Optional[str] = None
+
+class BookDetailModel(Book):
+    reviews: List[ReviewModel]

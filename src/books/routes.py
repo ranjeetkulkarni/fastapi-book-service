@@ -1,23 +1,19 @@
-from fastapi import APIRouter, Depends, status, HTTPException
+from fastapi import APIRouter, Depends, status
 from sqlmodel import Session
 from typing import List
+
 from db.main import get_session
 from .service import BookService
-from .schemas import Book, BookCreateModel, BookUpdateModel
-# --- UPDATED IMPORTS ---
+from .schemas import Book, BookCreateModel, BookUpdateModel, BookDetailModel
 from auth.dependencies import AccessTokenBearer, RoleChecker
+from errors import BookNotFound # <--- Import Custom Error
 
 book_router = APIRouter()
-book_service = BookService() 
+book_service = BookService()
 access_token_bearer = AccessTokenBearer()
+role_checker = RoleChecker(["admin", "user"])
+admin_role_checker = RoleChecker(["admin"])
 
-# --- DEFINE PERMISSIONS ---
-# For actions allowed by BOTH Users and Admins
-role_checker = RoleChecker(["admin", "user"]) 
-# For actions allowed ONLY by Admins
-admin_role_checker = RoleChecker(["admin"])   
-
-# 1. Public Route (Anyone can read)
 @book_router.get("/", response_model=List[Book])
 def get_all_books(session: Session = Depends(get_session)):
     return book_service.get_all_books(session)
@@ -26,44 +22,39 @@ def get_all_books(session: Session = Depends(get_session)):
 def create_book(
     book_data: BookCreateModel, 
     session: Session = Depends(get_session),
-    user_details = Depends(access_token_bearer) # Get Token Data
+    user_details = Depends(access_token_bearer)
 ):
-    user_uid = user_details['user']['user_uid'] # Extract UID
+    user_uid = user_details['user']['user_uid']
     return book_service.create_book(book_data, user_uid, session)
 
-# 3. Public Route
-@book_router.get("/{book_uid}", response_model=Book)
+@book_router.get("/{book_uid}", response_model=BookDetailModel)
 def get_book(book_uid: str, session: Session = Depends(get_session)):
     book = book_service.get_book(book_uid, session)
+    
     if not book:
-        raise HTTPException(status_code=404, detail="Book not found")
+        # Raise the specific error
+        raise BookNotFound()
+        
     return book
 
-# 4. Protected Route (Users & Admins)
-@book_router.patch("/{book_uid}", response_model=Book,
-                   dependencies=[Depends(role_checker)]) # <--- The Lock
+@book_router.patch("/{book_uid}", response_model=Book, dependencies=[Depends(role_checker)])
 def update_book(
     book_uid: str, 
     update_data: BookUpdateModel, 
     session: Session = Depends(get_session),
     user_details = Depends(access_token_bearer)
 ):
-    updated_book = book_service.update_book(book_uid, update_data, session)
-    if not updated_book:
-        raise HTTPException(status_code=404, detail="Book not found")
-    return updated_book
+    # Service raises BookNotFound if needed, so we just return the result
+    return book_service.update_book(book_uid, update_data, session)
 
-# 5. ADMIN ONLY Route (Strict Lock)
-@book_router.delete("/{book_uid}", status_code=status.HTTP_204_NO_CONTENT,
-                    dependencies=[Depends(admin_role_checker)]) # <--- ADMIN ONLY
+@book_router.delete("/{book_uid}", status_code=status.HTTP_204_NO_CONTENT, dependencies=[Depends(admin_role_checker)])
 def delete_book(
     book_uid: str, 
     session: Session = Depends(get_session),
     user_details = Depends(access_token_bearer)
 ):
-    deleted = book_service.delete_book(book_uid, session)
-    if not deleted:
-        raise HTTPException(status_code=404, detail="Book not found")
+    # Service raises BookNotFound if needed
+    book_service.delete_book(book_uid, session)
     return None
 
 @book_router.get("/user/{user_uid}", response_model=List[Book])
@@ -72,5 +63,4 @@ def get_books_by_user_uid(
     session: Session = Depends(get_session),
     user_details = Depends(access_token_bearer)
 ):
-    # (Optional: Add security check here so you can only see your own books if desired)
     return book_service.get_user_books(user_uid, session)
