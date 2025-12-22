@@ -39,3 +39,16 @@ class UserService:
         self.session.refresh(new_user)
         
         return new_user
+
+    def update_user(self, user: User, update_data: dict):
+        """
+        Generic update function. 
+        We will use this to set {"is_verified": True}
+        """
+        for key, value in update_data.items():
+            setattr(user, key, value)
+            
+        self.session.add(user)
+        self.session.commit()
+        self.session.refresh(user)
+        return user
