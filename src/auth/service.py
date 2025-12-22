@@ -1,6 +1,6 @@
 from sqlmodel import Session, select
 from .schemas import UserCreate
-from .models import User  # Importing your specific User model
+from db.models import User  # <--- CHANGED THIS
 from .utils import generate_passwd_hash
 
 class UserService:

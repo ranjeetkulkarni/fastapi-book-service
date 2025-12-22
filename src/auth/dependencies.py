@@ -7,7 +7,7 @@ from sqlmodel import Session
 from db.main import get_session
 from .service import UserService
 from typing import List
-from .models import User
+from db.models import User # <--- CHANGED THIS
 
 class TokenBearer(HTTPBearer):
     def __init__(self, auto_error: bool = True):

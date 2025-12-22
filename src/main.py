@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from books.routes import book_router
 from auth.routes import router as auth_router
+from reviews.routes import review_router # <--- Import this
 
 app = FastAPI(
     title="Bookly",
@@ -21,3 +22,9 @@ app.include_router(
     prefix="/api/v1/auth", 
     tags=['auth']
 )
+
+app.include_router(
+    review_router,
+    prefix="/api/v1/reviews", 
+    tags=['reviews']
+    )
