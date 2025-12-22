@@ -10,6 +10,8 @@ from .utils import create_access_token, verify_password
 # --- NEW IMPORTS ---
 from .dependencies import RefreshTokenBearer, AccessTokenBearer
 from db.redis import add_jti_to_blocklist
+from .dependencies import RefreshTokenBearer, AccessTokenBearer, get_current_user # <--- Add get_current_user
+from .schemas import UserResponse # Ensure UserResponse is imported
 
 # Standard naming convention inside the module
 router = APIRouter() 
@@ -112,3 +114,11 @@ async def logout(
         content={"message": "Logged Out Successfully"},
         status_code=status.HTTP_200_OK
     )
+
+# --- NEW ROUTE ---
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_profile(user = Depends(get_current_user)):
+    """
+    Returns the profile of the currently logged-in user.
+    """
+    return user

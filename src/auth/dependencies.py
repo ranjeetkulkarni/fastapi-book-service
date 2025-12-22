@@ -1,9 +1,11 @@
-from fastapi import Request, status, HTTPException
+from fastapi import Request, status, HTTPException, Depends
 from fastapi.security import HTTPBearer
 from fastapi.security.http import HTTPAuthorizationCredentials
 from .utils import decode_token
-# --- NEW IMPORT ---
 from db.redis import token_in_blocklist
+from sqlmodel import Session
+from db.main import get_session
+from .service import UserService
 
 class TokenBearer(HTTPBearer):
     def __init__(self, auto_error: bool = True):
@@ -53,3 +55,21 @@ class RefreshTokenBearer(TokenBearer):
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Please provide a refresh token"
             )
+        
+# --- NEW FUNCTION ---
+async def get_current_user(
+    token_details: dict = Depends(AccessTokenBearer()), # 1. Get Token Data
+    session: Session = Depends(get_session)             # 2. Get DB Connection
+):
+    user_email = token_details['user']['email']
+    
+    user_service = UserService(session)
+    user = user_service.get_user_by_email(user_email)
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+        
+    return user # Returns the full User model (with password, role, etc.)
