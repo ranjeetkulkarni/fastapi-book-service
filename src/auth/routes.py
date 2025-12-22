@@ -118,7 +118,6 @@ async def logout(
 # --- NEW ROUTE ---
 @router.get("/me", response_model=UserResponse)
 async def get_current_user_profile(user = Depends(get_current_user)):
-    """
-    Returns the profile of the currently logged-in user.
-    """
-    return user
+    return user 
+    # Because we set lazy="selectin" in models.py, 'user.books' is already loaded!
+    # Pydantic will see it and fill the 'books' list in the JSON.

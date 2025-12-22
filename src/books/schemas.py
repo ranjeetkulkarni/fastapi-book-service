@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, date # <--- Import date
 import uuid
 
 # 1. Ensure this is 'BookCreateModel' to match your imports
@@ -18,11 +18,16 @@ class Book(BaseModel):
     title: str
     author: str
     publisher: str
-    published_date: str
+    # 1. FIX TYPE: Change 'str' to 'date'
+    published_date: date 
     page_count: int
     language: str
     created_at: datetime
-    update_at: datetime
+    # 2. FIX TYPO: Change 'update_at' to 'updated_at'
+    updated_at: datetime 
+
+    class Config:
+        from_attributes = True
 
 # 3. Ensure this is 'BookUpdateModel'
 class BookUpdateModel(BaseModel):

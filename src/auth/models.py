@@ -4,15 +4,15 @@ from datetime import datetime
 import uuid
 from typing import List, Optional
 
-# Link to other models (Forward reference to avoid circular imports)
-# Make sure your Book and Review models are imported or available if they are in the same file
-# from books.models import Book 
-# from reviews.models import Review
+# Forward references (strings) prevent circular import errors
+# if TYPE_CHECKING:
+#     from books.models import Book
+#     from reviews.models import Review
 
 class User(SQLModel, table=True):
     __tablename__ = 'users'
     
-    # 1. Primary Key: Using PostgreSQL UUID for distributed safety
+    # 1. Primary Key
     uid: uuid.UUID = Field(
         sa_column=Column(
             pg.UUID,
@@ -22,20 +22,19 @@ class User(SQLModel, table=True):
         )
     )
     
-    # 2. Identification: Indexed for fast login lookups
+    # 2. Identification
     username: str = Field(unique=True, index=True, nullable=False)
     email: str = Field(unique=True, index=True, nullable=False)
     first_name: str = Field(nullable=False)
     last_name: str = Field(nullable=False)
     
-    # 3. Security: Storing hash, NOT plain text
+    # 3. Security
     password_hash: str = Field(exclude=True, nullable=False)
     
-    # 4. Status: Boolean flag for account verification
+    # 4. Status
     is_verified: bool = Field(default=False)
     
-    # 5. Roles: Authorization Level (New Field)
-    # server_default ensures the database sets 'user' if we forget to send it
+    # 5. Roles
     role: str = Field(
         sa_column=Column(
             pg.VARCHAR, 
@@ -44,7 +43,7 @@ class User(SQLModel, table=True):
         )
     )
 
-    # 6. Audit: Timestamps using Postgres TIMESTAMP with Timezone
+    # 6. Audit
     created_at: datetime = Field(
         sa_column=Column(pg.TIMESTAMP, default=datetime.now)
     )
@@ -52,11 +51,18 @@ class User(SQLModel, table=True):
         sa_column=Column(pg.TIMESTAMP, default=datetime.now)
     )
 
-    # 7. Relationships (Crucial for "My Books" feature)
-    # These link the User table to the Book and Review tables
-    books: List["Book"] = Relationship(back_populates="user")
-    reviews: List["Review"] = Relationship(back_populates="user")
+    # 7. Relationships (The Placement Topic: Selectin Loading)
+    # "lazy": "selectin" -> Eagerly loads books when you fetch the user.
+    # Without this, accessing user.books in async code will throw an error or cause lag.
+    books: List["Book"] = Relationship(
+        back_populates="user", 
+        sa_relationship_kwargs={"lazy": "selectin"}
+    )
+    
+    # reviews: List["Review"] = Relationship(
+    #     back_populates="user",
+    #     sa_relationship_kwargs={"lazy": "selectin"}
+    # )
 
-    # Professional string representation for debugging
     def __repr__(self):
         return f"<User {self.username}>"

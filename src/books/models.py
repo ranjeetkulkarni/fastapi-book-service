@@ -1,14 +1,18 @@
-from sqlmodel import SQLModel, Field, Column
+from sqlmodel import SQLModel, Field, Relationship
+from sqlalchemy import Column # <--- Import Column explicitly
 import sqlalchemy.dialects.postgresql as pg
-from datetime import datetime
+from datetime import datetime, date
 import uuid
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from auth.models import User
 
 class Book(SQLModel, table=True):
-    # Professional naming convention
     __tablename__ = "books"
-
+    
     uid: uuid.UUID = Field(
-        sa_column=Column(
+        sa_column=Column( # <--- Use 'Column', NOT 'pg.Column'
             pg.UUID, 
             nullable=False, 
             primary_key=True, 
@@ -18,12 +22,26 @@ class Book(SQLModel, table=True):
     title: str
     author: str
     publisher: str
-    published_date: str
+    published_date: date
     page_count: int
     language: str
-    created_at: datetime = Field(sa_column=Column(pg.TIMESTAMP, default=datetime.now))
-    update_at: datetime = Field(sa_column=Column(pg.TIMESTAMP, default=datetime.now))
+    
+    # Timestamps
+    created_at: datetime = Field(
+        sa_column=Column(pg.TIMESTAMP, default=datetime.now)
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(pg.TIMESTAMP, default=datetime.now)
+    )
 
-    # Makes debugging in the terminal much easier
+    # --- FOREIGN KEY ---
+    user_uid: Optional[uuid.UUID] = Field(
+        default=None, 
+        foreign_key="users.uid" # Links to User table
+    )
+
+    # --- RELATIONSHIP ---
+    user: Optional["User"] = Relationship(back_populates="books")
+
     def __repr__(self):
         return f"<Book {self.title}>"

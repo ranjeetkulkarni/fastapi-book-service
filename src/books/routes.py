@@ -22,15 +22,14 @@ admin_role_checker = RoleChecker(["admin"])
 def get_all_books(session: Session = Depends(get_session)):
     return book_service.get_all_books(session)
 
-# 2. Protected Route (Users & Admins)
-@book_router.post("/", status_code=status.HTTP_201_CREATED, response_model=Book,
-                  dependencies=[Depends(role_checker)]) # <--- The Lock
+@book_router.post("/", status_code=status.HTTP_201_CREATED, response_model=Book, dependencies=[Depends(role_checker)])
 def create_book(
     book_data: BookCreateModel, 
     session: Session = Depends(get_session),
-    user_details = Depends(access_token_bearer)
+    user_details = Depends(access_token_bearer) # Get Token Data
 ):
-    return book_service.create_book(book_data, session)
+    user_uid = user_details['user']['user_uid'] # Extract UID
+    return book_service.create_book(book_data, user_uid, session)
 
 # 3. Public Route
 @book_router.get("/{book_uid}", response_model=Book)
@@ -66,3 +65,12 @@ def delete_book(
     if not deleted:
         raise HTTPException(status_code=404, detail="Book not found")
     return None
+
+@book_router.get("/user/{user_uid}", response_model=List[Book])
+def get_books_by_user_uid(
+    user_uid: str,
+    session: Session = Depends(get_session),
+    user_details = Depends(access_token_bearer)
+):
+    # (Optional: Add security check here so you can only see your own books if desired)
+    return book_service.get_user_books(user_uid, session)
