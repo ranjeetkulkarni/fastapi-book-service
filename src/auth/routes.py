@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, status, BackgroundTasks
 from fastapi.responses import JSONResponse
 from sqlmodel import Session
 from datetime import datetime, timedelta # <--- Added datetime import
+from celery_tasks import send_email_task # <--- Import the Celery task
 
 from db.main import get_session 
 from .schemas import UserCreate, UserResponse, UserLoginModel
@@ -33,18 +34,9 @@ async def signup(
     
     link = f"{Config.DOMAIN}/api/v1/auth/verify/{token}"
     
-    # --- MOCK EMAIL SENDING ---
-    # Instead of sending, we print the link to the console for testing
-    print(f"--------------------------------")
-    print(f"VERIFICATION LINK FOR {new_user.email}:")
-    print(link)
-    print(f"--------------------------------")
-
-    # background_tasks.add_task(
-    #     send_verification_email, 
-    #     emails=[new_user.email], 
-    #     link=link
-    # )
+   # 2. TRIGGER CELERY TASK
+    # .delay() is the magic command that sends the data to Redis
+    send_email_task.delay(email=new_user.email, link=link)
     
     return new_user
 

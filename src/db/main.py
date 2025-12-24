@@ -8,7 +8,7 @@ engine = create_engine(
 )
 
 def init_db():
-    from books.models import Book 
+    from db.models import Book 
     SQLModel.metadata.create_all(bind=engine)
 
 # ADD THIS: The session provider for your routes

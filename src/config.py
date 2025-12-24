@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     # --- NEW: Domain (for verification link) ---
     DOMAIN: str
 
+    REDIS_URL: str = "redis://localhost:6379/0"
+
+    
     model_config = SettingsConfigDict(
         # Your existing environment file logic
         env_file=os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.env')),

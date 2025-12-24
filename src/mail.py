@@ -7,20 +7,20 @@ from pathlib import Path
 
 # 1. Email Configuration
 conf = ConnectionConfig(
-    MAIL_USERNAME=settings.MAIL_USERNAME,
-    MAIL_PASSWORD=settings.MAIL_PASSWORD,
-    MAIL_FROM=settings.MAIL_FROM,
-    MAIL_PORT=settings.MAIL_PORT,
-    MAIL_SERVER=settings.MAIL_SERVER,
-    MAIL_STARTTLS=settings.MAIL_STARTTLS,
-    MAIL_SSL_TLS=settings.MAIL_SSL_TLS,
-    USE_CREDENTIALS=settings.USE_CREDENTIALS,
-    VALIDATE_CERTS=settings.VALIDATE_CERTS
+    MAIL_USERNAME=Config.MAIL_USERNAME,
+    MAIL_PASSWORD=Config.MAIL_PASSWORD,
+    MAIL_FROM=Config.MAIL_FROM,
+    MAIL_PORT=Config.MAIL_PORT,
+    MAIL_SERVER=Config.MAIL_SERVER,
+    MAIL_STARTTLS=Config.MAIL_STARTTLS,
+    MAIL_SSL_TLS=Config.MAIL_SSL_TLS,
+    USE_CREDENTIALS=Config.USE_CREDENTIALS,
+    VALIDATE_CERTS=Config.VALIDATE_CERTS
 )
 
 # 2. Token Logic (ItsDangerous)
 serializer = URLSafeTimedSerializer(
-    secret_key=Config.SECRET_KEY, 
+    secret_key=Config.JWT_SECRET, 
     salt="email-configuration"
 )
 
