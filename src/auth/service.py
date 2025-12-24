@@ -2,8 +2,6 @@ from sqlmodel import Session, select
 from .schemas import UserCreate
 from db.models import User
 from .utils import generate_passwd_hash
-# 1. IMPORT CUSTOM EXCEPTION
-from errors import UserAlreadyExists 
 
 class UserService:
     def __init__(self, session: Session):
@@ -11,18 +9,16 @@ class UserService:
 
     def get_user_by_email(self, email: str):
         statement = select(User).where(User.email == email)
-        result = self.session.exec(statement)
-        return result.first()
+        return self.session.exec(statement).first()
 
-    def user_exists(self, email: str) -> bool:
-        user = self.get_user_by_email(email)
-        return user is not None
+    # ✅ THE FIX: Update definition to accept 'username'
+    def user_exists(self, email: str, username: str = None) -> bool:
+        # Check if EITHER the email OR the username matches
+        statement = select(User).where((User.email == email) | (User.username == username))
+        user = self.session.exec(statement).first()
+        return True if user else False
 
     def create_user(self, user_data: UserCreate):
-        # 2. CHECK AND RAISE CUSTOM EXCEPTION
-        if self.user_exists(user_data.email):
-            raise UserAlreadyExists()
-
         hashed_pwd = generate_passwd_hash(user_data.password)
 
         new_user = User(
@@ -41,10 +37,6 @@ class UserService:
         return new_user
 
     def update_user(self, user: User, update_data: dict):
-        """
-        Generic update function. 
-        We will use this to set {"is_verified": True}
-        """
         for key, value in update_data.items():
             setattr(user, key, value)
             

@@ -42,6 +42,12 @@ def decode_token(token: str) -> dict:
             algorithms=[Config.JWT_ALGORITHM]
         )
         return token_data
+    
     except jwt.PyJWTError as e:
-        logging.exception(e) # Log the error for debugging
+        logging.exception(e) # Log specific JWT errors
+        return None
+        
+    except Exception as e:
+        # ✅ CRITICAL FIX: Catches "ValueError", "DecodeError", and garbage data
+        logging.exception(e) 
         return None

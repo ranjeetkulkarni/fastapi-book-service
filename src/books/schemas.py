@@ -1,42 +1,43 @@
-from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime, date # <--- Import date
+from pydantic import BaseModel, ConfigDict, field_serializer
+from typing import Optional, List
+from datetime import datetime, date
 import uuid
-from typing import List # <--- Import List
-from reviews.schemas import ReviewModel # <--- Import Review Schema
+from reviews.schemas import ReviewModel
 
-# 1. Ensure this is 'BookCreateModel' to match your imports
 class BookCreateModel(BaseModel):
     title: str
     author: str
     publisher: str
-    published_date: str
+    published_date: date
     page_count: int
     language: str
 
-# 2. This is the main schema used for responses
 class Book(BaseModel):
     uid: uuid.UUID
     title: str
     author: str
     publisher: str
-    # 1. FIX TYPE: Change 'str' to 'date'
-    published_date: date 
+    published_date: date
     page_count: int
     language: str
     created_at: datetime
-    # 2. FIX TYPO: Change 'update_at' to 'updated_at'
-    updated_at: datetime 
+    updated_at: datetime
+
+    # ✅ THE FIX: Manually add "Z" for UTC time
+    @field_serializer('created_at', 'updated_at')
+    def serialize_dt(self, dt: datetime, _info):
+        if dt.tzinfo is None:
+            return dt.isoformat() + "Z"
+        return dt.isoformat()
 
     class Config:
         from_attributes = True
 
-# 3. Ensure this is 'BookUpdateModel'
 class BookUpdateModel(BaseModel):
     title: Optional[str] = None
     author: Optional[str] = None
     publisher: Optional[str] = None
-    published_date: Optional[str] = None
+    published_date: Optional[date] = None
     page_count: Optional[int] = None
     language: Optional[str] = None
 

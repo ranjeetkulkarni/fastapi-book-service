@@ -24,3 +24,14 @@ Thumbs.db
 # --- My Custom Archives ---
 legacy_scripts/
 *.txt
+
+
+# Testing artifacts
+.hypothesis/
+src/.hypothesis/
+.pytest_cache/
+__pycache__/
+
+# Local editor configs
+.cph/
+.vscode/

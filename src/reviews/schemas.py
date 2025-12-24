@@ -1,13 +1,11 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict, field_serializer # <--- Added field_serializer
 from datetime import datetime
 import uuid
 
-# 1. Incoming Data (What the user sends)
 class ReviewCreateModel(BaseModel):
-    rating: int = Field(ge=1, le=5) # Enforce 1-5 stars
+    rating: int = Field(ge=1, le=5)
     review_text: str
 
-# 2. Outgoing Data (What we send back)
 class ReviewModel(BaseModel):
     uid: uuid.UUID
     rating: int
@@ -16,6 +14,13 @@ class ReviewModel(BaseModel):
     book_uid: uuid.UUID
     created_at: datetime
     updated_at: datetime
+
+    # 1. UPDATED SERIALIZER
+    @field_serializer('created_at', 'updated_at')
+    def serialize_dt(self, dt: datetime, _info):
+        if dt.tzinfo is None:
+            return dt.isoformat() + "Z"
+        return dt.isoformat()
 
     class Config:
         from_attributes = True

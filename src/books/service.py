@@ -2,7 +2,8 @@ from sqlmodel import Session, select, desc
 from datetime import datetime
 from db.models import Book
 from .schemas import BookCreateModel, BookUpdateModel
-from errors import BookNotFound  # <--- 1. Import Custom Error
+# 1. CRITICAL: Ensure this matches the class in src/errors.py
+from errors import BookNotFound 
 import uuid
 
 class BookService:
@@ -26,14 +27,14 @@ class BookService:
 
     def get_book(self, book_uid: str, session: Session):
         statement = select(Book).where(Book.uid == uuid.UUID(book_uid))
-        return session.exec(statement).first()
+        book = session.exec(statement).first()
+        
+        if not book:
+            raise BookNotFound()
+        return book
 
     def update_book(self, book_uid: str, update_data: BookUpdateModel, session: Session):
         book = self.get_book(book_uid, session)
-        
-        if not book:
-            # 2. Raise Custom Error directly in Service
-            raise BookNotFound()
         
         book_data = update_data.model_dump(exclude_unset=True)
         for key, value in book_data.items():
@@ -46,11 +47,6 @@ class BookService:
 
     def delete_book(self, book_uid: str, session: Session):
         book = self.get_book(book_uid, session)
-        
-        if not book:
-            # 3. Raise Custom Error
-            raise BookNotFound()
-            
         session.delete(book)
         session.commit()
         return True

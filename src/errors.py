@@ -29,26 +29,21 @@ class InvalidCredentials(BooklyException):
 class AccessDenied(BooklyException):
     pass
 
-# --- NEW: Auth & Token Exceptions ---
 class AccountNotVerified(BooklyException):
-    """User tries to login but hasn't verified email"""
     pass
 
 class InvalidToken(BooklyException):
-    """Token is fake, expired, or malformed"""
     pass
 
 class RefreshTokenRequired(BooklyException):
-    """User tried to use an Access Token where a Refresh Token was needed"""
     pass
 
 class InsufficientPermission(BooklyException):
-    """User doesn't have the role (e.g. admin)"""
     pass
 
 
 # ==========================================
-# 3. Exception Handlers (The Logic)
+# 3. Exception Handlers
 # ==========================================
 async def user_already_exists_handler(request: Request, exc: UserAlreadyExists):
     return JSONResponse(
@@ -86,7 +81,6 @@ async def access_denied_handler(request: Request, exc: AccessDenied):
         content={"error_code": "ACCESS_DENIED", "message": "You do not have permission to perform this action."}
     )
 
-# --- NEW HANDLERS ---
 async def account_not_verified_handler(request: Request, exc: AccountNotVerified):
     return JSONResponse(
         status_code=status.HTTP_403_FORBIDDEN,
@@ -111,8 +105,6 @@ async def insufficient_permission_handler(request: Request, exc: InsufficientPer
         content={"error_code": "INSUFFICIENT_PERMISSIONS", "message": "You do not have the required role."}
     )
 
-# --- GLOBAL HANDLER (The "Catch-All") ---
-# This catches random server crashes (Status 500)
 async def internal_server_error_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -120,7 +112,7 @@ async def internal_server_error_handler(request: Request, exc: Exception):
     )
 
 # ==========================================
-# 4. Registration Function (The Glue)
+# 4. Registration Function
 # ==========================================
 def register_all_errors(app: FastAPI):
     app.add_exception_handler(UserAlreadyExists, user_already_exists_handler)
@@ -129,13 +121,11 @@ def register_all_errors(app: FastAPI):
     app.add_exception_handler(ReviewNotFound, review_not_found_handler)
     app.add_exception_handler(InvalidCredentials, invalid_credentials_handler)
     app.add_exception_handler(AccessDenied, access_denied_handler)
-    
-    # Register the New Ones
     app.add_exception_handler(AccountNotVerified, account_not_verified_handler)
     app.add_exception_handler(InvalidToken, invalid_token_handler)
     app.add_exception_handler(RefreshTokenRequired, refresh_token_required_handler)
     app.add_exception_handler(InsufficientPermission, insufficient_permission_handler)
     
-    # Register Global Fallback
+    # Catch-alls
+    app.add_exception_handler(SQLAlchemyError, internal_server_error_handler)
     app.add_exception_handler(Exception, internal_server_error_handler)
-    app.add_exception_handler(SQLAlchemyError, internal_server_error_handler) # Catch DB errors

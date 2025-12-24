@@ -1,15 +1,16 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, Field, EmailStr, ConfigDict, field_serializer
 import uuid
 from datetime import datetime
-from typing import List  # <--- FIXED: Import List here
-from books.schemas import Book  # <--- FIXED: Import Book schema here
+from typing import List
+from books.schemas import Book
 
 class UserCreate(BaseModel):
-    username: str
+    # ✅ THE FIX: Prevent empty strings causing crashes
+    username: str = Field(min_length=2, max_length=50)
     email: EmailStr
-    password: str
-    first_name: str
-    last_name: str
+    password: str = Field(min_length=6)
+    first_name: str = Field(min_length=1, max_length=50)
+    last_name: str = Field(min_length=1, max_length=50)
 
 class UserLoginModel(BaseModel):
     email: EmailStr
@@ -24,9 +25,14 @@ class UserResponse(BaseModel):
     is_verified: bool
     role: str
     created_at: datetime
-    
-    # This now works because 'List' and 'Book' are imported above
     books: List[Book] = [] 
     
+    # ✅ THE FIX: Add "Z" here too
+    @field_serializer('created_at')
+    def serialize_dt(self, dt: datetime, _info):
+        if dt.tzinfo is None:
+            return dt.isoformat() + "Z"
+        return dt.isoformat()
+
     class Config:
         from_attributes = True
